@@ -1,6 +1,6 @@
 # Description
 
-This repository is meant to serve as a general template for how to set up new repositories in the JogetOSS organization. 
+The Form Files Zip Element plugin is used to zip all the documents in all or selected file/image upload fields in current form.
 
 # Getting Help
 
