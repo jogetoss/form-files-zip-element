@@ -12,11 +12,26 @@
              "options_callback":"FormBuilder.getAllFieldOptions"
          },
          {
+            "name":"showLabel",
+            "label":"@@form.formfileszipelement.showLabel@@",
+            "type":"checkbox",
+            "value":"False",
+            "options":[
+               {
+                  "value":"true",
+                  "label":""
+               }
+            ]
+         },
+         {
              "name":"label",
              "label":"@@form.formfileszipelement.label@@",
              "type":"textfield",
-             "value":"@@org.joget.marketplace.formfileszipelement.label@@"
+             "value":"@@org.joget.marketplace.formfileszipelement.label@@",
+             "control_field": "showLabel",
+             "control_value": "true"
          },
+        
          {
             "name":"buttonLabel",
             "label":"@@form.formfileszipelement.buttonLabel@@",

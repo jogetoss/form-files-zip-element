@@ -1,5 +1,7 @@
 <div class="form-cell" ${elementMetaData!}>
+<#if (element.properties.showLabel! == 'true') >
     <label class="label" field-tooltip="${elementParamName!}">${element.properties.label} <span class="form-cell-validator">${decoration}</span><#if error??> <span class="form-error-message">${error}</span></#if></label>
+</#if>
     <div class="form-cell-value" id="formfilezzip_${elementParamName!}_${element.properties.elementUniqueKey!}">
         <button id="${elementParamName!}" name="${elementParamName!}" class="form-button btn button btn-primary">${element.properties.buttonLabel!}</button>
     </div>
@@ -10,7 +12,10 @@ $(document).ready(function() {
         event.preventDefault(); // Prevent the default form submission
         $.ajax({
             type: "POST",
-            url: "${request.contextPath}/web/json/app/${appId!}/${appVersion!}/plugin/org.joget.marketplace.FormFilesZipElement/service?formDefId=${element.properties.formDefId!}&recordId=${recordId}&download=${element.properties.downloadConfig!}&downloadFields=${downloadFieldsStr!}",
+            url: "${element.serviceUrl!}",
+            data: {
+                id: '${id}'
+            },
             xhrFields: {
                 responseType: 'blob' // Set response type to blob for binary data
             },

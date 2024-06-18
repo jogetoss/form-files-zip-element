@@ -1,14 +1,18 @@
 package org.joget.marketplace;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 
 import org.joget.apps.form.lib.SelectBox;
+import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormBuilderPalette;
 import org.joget.plugin.base.PluginWebSupport;
+import org.joget.workflow.model.WorkflowAssignment;
+import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.context.ApplicationContext;
 
 import com.google.gson.Gson;
@@ -40,6 +44,7 @@ import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.ResourceBundleUtil;
+import org.joget.commons.util.SecurityUtil;
 
 public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
     public static String MESSAGE_PATH = "message/FormFilesZipElement";
@@ -52,7 +57,7 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
 
     @Override
     public String getVersion() {
-        return "8.0.0";
+        return "8.0.1";
     }
 
     @Override
@@ -99,9 +104,33 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
         dataModel.put("appId", appDef.getAppId());
         dataModel.put("appVersion", appDef.getVersion().toString());
 
+        if(formData.getPrimaryKeyValue()!=null){
+            dataModel.put("id", formData.getPrimaryKeyValue());
+        } else {
+            dataModel.put("id", "");
+        }
+
+        String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
+        return html;
+        
+    }
+
+    //?formDefId=${element.properties.formDefId!}&recordId=${recordId}&download=${element.properties.downloadConfig!}&downloadFields=${downloadFieldsStr!}",
+    public String getServiceUrl() {
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+        ApplicationContext ac = AppUtil.getApplicationContext();
+        String url = WorkflowUtil.getHttpServletRequest().getContextPath() + "/web/json/app/" + appDef.getAppId() + "/" + appDef.getVersion() + "/plugin/org.joget.marketplace.FormFilesZipElement/service";
+        
+        //create nonce
+        String nonce = SecurityUtil.generateNonce(new String[]{"FormFilesZipElement", appDef.getAppId(), appDef.getVersion().toString()}, 1);
+
+        // get params
+        Object formDefId = getProperty("formDefId");
+        Object downloadConfig = getProperty("downloadConfig");
         Object downloadFields = getProperty("downloadFields");
+        String downloadFieldsStr = "";
         if (downloadFields != null && downloadFields instanceof Object[]) {
-            String downloadFieldsStr = "";
+          
             for (Object param : ((Object[]) downloadFields)) {
                 Map paramMap = ((Map)param);
 
@@ -111,120 +140,118 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
               
                 downloadFieldsStr += paramMap.get("field");
             }
-            dataModel.put("downloadFieldsStr", downloadFieldsStr);
-        } else {
-            dataModel.put("downloadFieldsStr", "");
-        }
+        } 
 
-        if(formData.getPrimaryKeyValue()!=null){
-            dataModel.put("recordId", formData.getPrimaryKeyValue());
-        } else {
-            dataModel.put("recordId", "");
+        try {
+            url = url + "?_nonce=" + URLEncoder.encode(nonce, "UTF-8") + "&_formDefId=" + URLEncoder.encode(formDefId.toString(), "UTF-8") + "&_download=" + URLEncoder.encode(downloadConfig.toString(), "UTF-8") + "&_downloadFields=" + URLEncoder.encode(downloadFieldsStr, "UTF-8");
+        } catch (Exception e) {
         }
-
-        String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
-        return html;
-        
+        return url;
     }
 
 
     @Override
     public void webService(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String formDefId = request.getParameter("formDefId");
-        String recordId = request.getParameter("recordId");
-        String download = request.getParameter("download");;
-        String downloadFields = request.getParameter("downloadFields");;
+        if ("POST".equalsIgnoreCase(request.getMethod())) {
+            AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+            String nonce = request.getParameter("_nonce");
+            String formDefId = request.getParameter("_formDefId");
+            String download = request.getParameter("_download");;
+            String downloadFields = request.getParameter("_downloadFields");;
+            String id = request.getParameter("id");
 
-        ApplicationContext ac = AppUtil.getApplicationContext();
-        AppService appService = (AppService) ac.getBean("appService");
-        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-        FormDefinitionDao dao = (FormDefinitionDao) FormUtil.getApplicationContext().getBean("formDefinitionDao");
-        FormDefinition formDef = dao.loadById(formDefId, appDef);
-        
-        String[] uploadFieldIdsArr = new String[0];
-        if(download.equals("downloadAll")){
-            // get all upload field ids
-            String json = formDef.getJson();
-            String uploadFieldIds = findUploadFieldIds(formDefId, json);
-            uploadFieldIdsArr = uploadFieldIds.split(",");
-        } else if(download.equals("downloadSelectedFields")){
-            String uploadFieldIds = downloadFields;
-            uploadFieldIdsArr = uploadFieldIds.split(",");
-        }
-      
-        // get files from upload field ids
-        FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId,recordId);
-        FormRow row = set.get(0);
-
-        // Get excel file
-        List<String> fileNamesList = new ArrayList<>();
-        for(String uploadFieldId : uploadFieldIdsArr){
-            if (uploadFieldId != null && !uploadFieldId.equals("")) {
-                if (!row.get(uploadFieldId).toString().isEmpty()) {
-                    // Get files name
-                    String filesName = row.get(uploadFieldId).toString();
-                    String[] fileNames = filesName.split(";");
-                    for (String s : fileNames) {
-                        fileNamesList.add(s);
-                    }
-                    
-                } else {
-                    LogUtil.info(getClassName(), "Form Row not found for ID: " + recordId);
+            if (SecurityUtil.verifyNonce(nonce, new String[]{"FormFilesZipElement", appDef.getAppId(), appDef.getVersion().toString()})) {
+                ApplicationContext ac = AppUtil.getApplicationContext();
+                AppService appService = (AppService) ac.getBean("appService");
+                FormDefinitionDao dao = (FormDefinitionDao) FormUtil.getApplicationContext().getBean("formDefinitionDao");
+                FormDefinition formDef = dao.loadById(formDefId, appDef);
+                
+                String[] uploadFieldIdsArr = new String[0];
+                if(download.equals("downloadAll")){
+                    // get all upload field ids
+                    String json = formDef.getJson();
+                    String uploadFieldIds = findUploadFieldIds(formDefId, json);
+                    uploadFieldIdsArr = uploadFieldIds.split(",");
+                } else if(download.equals("downloadSelectedFields")){
+                    String uploadFieldIds = downloadFields;
+                    uploadFieldIdsArr = uploadFieldIds.split(",");
                 }
-            }
-        }
+            
+                // get files from upload field ids
+                FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId,id);
+                FormRow row = set.get(0);
 
-        // Zip all excel files into 1 zip file
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-  
-        try (ZipOutputStream zos = new ZipOutputStream(byteArrayOutputStream)) {
-
-            // Buffer for reading the file
-            byte[] buffer = new byte[1024];
-
-            Boolean fileAddedToZip = false;
-            // Iterate over each file name
-            for (String fileName : fileNamesList) {
-                // Get the file
-                File file = FileUtil.getFile(fileName.trim(), appService.getFormTableName(appDef, formDefId), recordId);
-
-                if (file != null && file.exists()) {
-                    // Add a new entry to the zip file
-                    ZipEntry zipEntry = new ZipEntry(fileName.trim());
-                    zos.putNextEntry(zipEntry);
-
-                    // Read the file and write it to the zip output stream
-                    try (FileInputStream fis = new FileInputStream(file)) {
-                        int length;
-                        while ((length = fis.read(buffer)) > 0) {
-                            zos.write(buffer, 0, length);
+                // Get excel file
+                List<String> fileNamesList = new ArrayList<>();
+                for(String uploadFieldId : uploadFieldIdsArr){
+                    if (uploadFieldId != null && !uploadFieldId.equals("")) {
+                        if (!row.get(uploadFieldId).toString().isEmpty()) {
+                            // Get files name
+                            String filesName = row.get(uploadFieldId).toString();
+                            String[] fileNames = filesName.split(";");
+                            for (String s : fileNames) {
+                                fileNamesList.add(s);
+                            }
+                            
+                        } else {
+                            LogUtil.info(getClassName(), "Form Row not found for ID: " + id);
                         }
                     }
-                    fileAddedToZip = true;
-                    // Close the current entry
-                    zos.closeEntry();
-
-                } else {
-                    LogUtil.info(getClassName(), "File not found: " + fileName);
                 }
-            }
-            
-            if(fileAddedToZip){
-                LogUtil.info(getClassName(), "Files have been zipped successfully!");
 
-                // Set the response headers
-                response.setContentType("application/zip");
-                response.setHeader("Content-Disposition", "attachment; filename=files.zip");
-    
-                // Write the zip data to the response output stream
-                try (ServletOutputStream servletOutputStream = response.getOutputStream()) {
-                    byteArrayOutputStream.writeTo(servletOutputStream);
-                    servletOutputStream.flush();
-                }
-            }
+                // Zip all excel files into 1 zip file
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         
-        } catch (IOException e) {
-            LogUtil.error("Zip File", e, e.getMessage());
+                try (ZipOutputStream zos = new ZipOutputStream(byteArrayOutputStream)) {
+
+                    // Buffer for reading the file
+                    byte[] buffer = new byte[1024];
+
+                    Boolean fileAddedToZip = false;
+                    // Iterate over each file name
+                    for (String fileName : fileNamesList) {
+                        // Get the file
+                        File file = FileUtil.getFile(fileName.trim(), appService.getFormTableName(appDef, formDefId), id);
+
+                        if (file != null && file.exists()) {
+                            // Add a new entry to the zip file
+                            ZipEntry zipEntry = new ZipEntry(fileName.trim());
+                            zos.putNextEntry(zipEntry);
+
+                            // Read the file and write it to the zip output stream
+                            try (FileInputStream fis = new FileInputStream(file)) {
+                                int length;
+                                while ((length = fis.read(buffer)) > 0) {
+                                    zos.write(buffer, 0, length);
+                                }
+                            }
+                            fileAddedToZip = true;
+                            // Close the current entry
+                            zos.closeEntry();
+
+                        } else {
+                            LogUtil.info(getClassName(), "File not found: " + fileName);
+                        }
+                    }
+                    
+                    if(fileAddedToZip){
+                        LogUtil.info(getClassName(), "Files have been zipped successfully!");
+
+                        // Set the response headers
+                        response.setContentType("application/zip");
+                        response.setHeader("Content-Disposition", "attachment; filename=files.zip");
+            
+                        // Write the zip data to the response output stream
+                        try (ServletOutputStream servletOutputStream = response.getOutputStream()) {
+                            byteArrayOutputStream.writeTo(servletOutputStream);
+                            servletOutputStream.flush();
+                        }
+                    }
+                
+                } catch (IOException e) {
+                    LogUtil.error("Zip File", e, e.getMessage());
+                }
+            }
         }
     }
 
