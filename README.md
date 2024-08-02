@@ -2,7 +2,9 @@
 
 The Form Files Zip Element plugin is used to zip all the documents in all or selected file/image upload fields in current form.
 
-To setup and configure this plugin, please see the [documentation](https://dev.joget.org/community/display/SANDBOX2/Form+Files+Zip+Element).
+To setup and configure this plugin, please see the [documentation](https://dev.joget.org/community/display/marketplace/Form+Files+Zip+Element).
+
+
 
 
 # Getting Help
