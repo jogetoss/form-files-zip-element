@@ -9,9 +9,18 @@
     </label>
 </#if>
 <div class="form-cell-value" id="formfilezzip_${elementParamName!}_${element.properties.elementUniqueKey!}">
-    <button id="${elementParamName!}" name="${elementParamName!}" class="form-button btn button btn-primary">
-        ${element.properties.buttonLabel!}
-    </button>
+    <div class="container">
+        <div class="description">
+            ${element.properties.label!}
+        </div>
+        <div class="icon">
+            <a href="#" id="${elementParamName!}" name="${elementParamName!}" title="${element.properties.buttonLabel!}">
+                <i class="fas fa-download fa-2x" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
 </div>
 
 <!-- Popup Modal -->
@@ -358,5 +367,26 @@ $(document).ready(function() {
     color: #6c757d;
     font-style: italic;
 }
+   .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        margin-top: 10px;
+    }
+    .description {
+        flex-grow: 1;
+        margin-right: 15px;
+        font-size: 15px;
+        color: #333;
+    }
+    .icon img {
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+    }
 </style>
 </div>
