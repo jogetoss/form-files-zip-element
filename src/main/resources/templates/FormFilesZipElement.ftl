@@ -21,8 +21,6 @@
     </div>
 </div>
 
-</div>
-
 <!-- Popup Modal -->
 <div id="popupModal" class="popup-modal">
     <div class="popup-content">
@@ -107,26 +105,33 @@ $(document).ready(function() {
         }
     });
 
-    // Function to load files from the endpoint
+        // Function to load files from the endpoint
     function loadFiles() {
         const serviceUrl = "${element.getServiceUrl()}";
-        const listUrl = serviceUrl + "&action=list&id=${id!}";
+        // Check if the serviceUrl already has parameters
+        const separator = serviceUrl.includes('?') ? '&' : '?';
+        const listUrl = serviceUrl + separator + "action=list&id=${id!}";
+        
+        console.log('Loading files from URL:', listUrl);
         
         $.ajax({
             url: listUrl,
             method: 'GET',
             dataType: 'json',
             success: function(data) {
+                console.log('Files loaded successfully:', data);
                 populateFilesTable(data);
             },
             error: function(xhr, status, error) {
                 console.error('Error loading files:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
                 $("#filesTableBody").html('<tr><td colspan="2" style="text-align: center; color: red; padding: 20px;">Error loading files. Please try again.</td></tr>');
             }
         });
     }
 
-    // Function to populate the files table
+        // Function to populate the files table
     function populateFilesTable(files) {
         const tbody = $("#filesTableBody");
         tbody.empty();
@@ -157,14 +162,14 @@ $(document).ready(function() {
     // Function to download selected files
     function downloadSelectedFiles(selectedFiles) {
         const serviceUrl = "${element.getServiceUrl()}";
-        
+
         // Create a form to submit the download request
         const form = $('<form>', {
             'method': 'POST',
             'action': serviceUrl,
             'target': '_blank'
         });
-        
+
         // Add the selected files as hidden inputs
         selectedFiles.forEach(function(fileName) {
             form.append($('<input>', {
@@ -173,14 +178,14 @@ $(document).ready(function() {
                 'value': fileName
             }));
         });
-        
+
         // Add the record ID
         form.append($('<input>', {
             'type': 'hidden',
             'name': 'id',
             'value': '${id!}'
         }));
-        
+
         // Submit the form
         $('body').append(form);
         form.submit();
@@ -349,44 +354,5 @@ $(document).ready(function() {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
-
-/* Loading spinner */
-.fa-spinner {
-    color: #007bff;
-    font-size: 18px;
-}
-
-/* Error message styling */
-.file-list-table td[colspan="2"] {
-    color: #dc3545;
-    font-style: italic;
-}
-
-/* No files message */
-.file-list-table td[colspan="2"]:not([style*="color: red"]) {
-    color: #6c757d;
-    font-style: italic;
-}
-   .container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        margin-top: 10px;
-    }
-    .description {
-        flex-grow: 1;
-        margin-right: 15px;
-        font-size: 15px;
-        color: #333;
-    }
-    .icon img {
-        width: 36px;
-        height: 36px;
-        cursor: pointer;
-    }
 </style>
 </div>
