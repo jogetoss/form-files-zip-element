@@ -9,16 +9,10 @@
     </label>
 </#if>
 <div class="form-cell-value" id="formfilezzip_${elementParamName!}_${element.properties.elementUniqueKey!}">
-    <div class="container">
-        <div class="description">
-            ${element.properties.label!}
-        </div>
-        <div class="icon">
-            <a href="#" id="${elementParamName!}" name="${elementParamName!}" title="${element.properties.buttonLabel!}">
-                <i class="fas fa-download fa-2x" aria-hidden="true"></i>
-            </a>
-        </div>
-    </div>
+    <button id="${elementParamName!}" name="${elementParamName!}" class="download-zip-button">
+        <i class="fas fa-download" aria-hidden="true"></i>
+        <span>Download Zip</span>
+    </button>
 </div>
 
 <!-- Popup Modal -->
@@ -353,6 +347,44 @@ $(document).ready(function() {
 @keyframes scaleIn {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
+}
+
+/* Download Zip Button */
+.download-zip-button {
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+    letter-spacing: 0.5px;
+}
+
+.download-zip-button:hover {
+    background: linear-gradient(135deg, #357abd 0%, #2c5aa0 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+}
+
+.download-zip-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.download-zip-button i {
+    font-size: 18px;
+    margin-right: 2px;
+}
+
+.download-zip-button span {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 </style>
 </div>
