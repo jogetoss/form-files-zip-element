@@ -174,7 +174,7 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
             FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId, id);
             JsonArray filesJson = new JsonArray();
 
-            if (!set.isEmpty()) {
+            if (set != null && !set.isEmpty()) {
                 FormRow row = set.get(0);
                 for (String uploadFieldId : uploadFieldIdsArr) {
                     String fileValue = row.getProperty(uploadFieldId);
@@ -184,14 +184,11 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                             JsonObject fileObj = new JsonObject();
                             fileObj.addProperty("fileName", file);
                             fileObj.addProperty("fieldId", uploadFieldId);
-                            
-                            // Get file size
                             try {
                                 File actualFile = FileUtil.getFile(file.trim(), appService.getFormTableName(appDef, formDefId), id);
                                 if (actualFile != null && actualFile.exists()) {
                                     long fileSize = actualFile.length();
-                                    String sizeStr = formatFileSize(fileSize);
-                                    fileObj.addProperty("fileSize", sizeStr);
+                                    fileObj.addProperty("fileSize", formatFileSize(fileSize));
                                     fileObj.addProperty("fileSizeBytes", fileSize);
                                 } else {
                                     fileObj.addProperty("fileSize", "Unknown");
@@ -201,7 +198,6 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                                 fileObj.addProperty("fileSize", "Unknown");
                                 fileObj.addProperty("fileSizeBytes", 0);
                             }
-                            
                             filesJson.add(fileObj);
                         }
                     }
@@ -211,6 +207,7 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
             response.getWriter().write(filesJson.toString());
             return;
         }
+
         if ("POST".equalsIgnoreCase(request.getMethod())) {
             AppDefinition appDef = AppUtil.getCurrentAppDefinition();
             String nonce = request.getParameter("_nonce");
@@ -224,107 +221,84 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                 AppService appService = (AppService) ac.getBean("appService");
                 FormDefinitionDao dao = (FormDefinitionDao) FormUtil.getApplicationContext().getBean("formDefinitionDao");
                 FormDefinition formDef = dao.loadById(formDefId, appDef);
-                
-                // Get selected files from the request
+
                 String[] selectedFiles = request.getParameterValues("selectedFiles");
                 List<String> fileNamesList = new ArrayList<>();
-                
+
                 if (selectedFiles != null && selectedFiles.length > 0) {
-                    // Use selected files from frontend
                     for (String fileName : selectedFiles) {
                         if (fileName != null && !fileName.trim().isEmpty()) {
                             fileNamesList.add(fileName.trim());
                         }
                     }
                 } else {
-                    // Fallback to original logic for backward compatibility
                     String[] uploadFieldIdsArr = new String[0];
-                    if(download.equals("downloadAll")){
-                        // get all upload field ids
-                        String json = formDef.getJson();
-                        String uploadFieldIds = findUploadFieldIds(formDefId, json);
+                    if ("downloadAll".equals(download)) {
+                        String uploadFieldIds = findUploadFieldIds(formDefId, formDef.getJson());
                         uploadFieldIdsArr = uploadFieldIds.split(",");
-                    } else if(download.equals("downloadSelectedFields")){
-                        String uploadFieldIds = downloadFields;
-                        uploadFieldIdsArr = uploadFieldIds.split(",");
+                    } else if ("downloadSelectedFields".equals(download)) {
+                        uploadFieldIdsArr = downloadFields.split(",");
                     }
-                
-                    // get files from upload field ids
-                    FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId,id);
-                    FormRow row = set.get(0);
 
-                    for(String uploadFieldId : uploadFieldIdsArr){
-                        if (uploadFieldId != null && !uploadFieldId.equals("")) {
-                            if (!row.get(uploadFieldId).toString().isEmpty()) {
-                                // Get files name
-                                String filesName = row.get(uploadFieldId).toString();
-                                String[] fileNames = filesName.split(";");
-                                for (String s : fileNames) {
-                                    fileNamesList.add(s);
+                    FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId, id);
+                    if (set != null && !set.isEmpty()) {
+                        FormRow row = set.get(0);
+                        for (String uploadFieldId : uploadFieldIdsArr) {
+                            String value = row.getProperty(uploadFieldId);
+                            if (value != null && !value.isEmpty()) {
+                                String[] files = value.split(";");
+                                for (String file : files) {
+                                    if (file != null && !file.trim().isEmpty()) {
+                                        fileNamesList.add(file.trim());
+                                    }
                                 }
-                                
-                            } else {
-                                LogUtil.info(getClassName(), "Form Row not found for ID: " + id);
                             }
                         }
                     }
                 }
 
-                // Zip all excel files into 1 zip file
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        
-                try (ZipOutputStream zos = new ZipOutputStream(byteArrayOutputStream)) {
+                boolean fileAddedToZip = false;
 
-                    // Buffer for reading the file
+                try (ZipOutputStream zos = new ZipOutputStream(byteArrayOutputStream)) {
                     byte[] buffer = new byte[1024];
 
-                    Boolean fileAddedToZip = false;
-                    // Iterate over each file name
                     for (String fileName : fileNamesList) {
-                        // Get the file
-                        File file = FileUtil.getFile(fileName.trim(), appService.getFormTableName(appDef, formDefId), id);
-
+                        File file = FileUtil.getFile(fileName, appService.getFormTableName(appDef, formDefId), id);
                         if (file != null && file.exists()) {
-                            // Add a new entry to the zip file
-                            ZipEntry zipEntry = new ZipEntry(fileName.trim());
-                            zos.putNextEntry(zipEntry);
-
-                            // Read the file and write it to the zip output stream
                             try (FileInputStream fis = new FileInputStream(file)) {
-                                int length;
-                                while ((length = fis.read(buffer)) > 0) {
-                                    zos.write(buffer, 0, length);
+                                ZipEntry zipEntry = new ZipEntry(new File(fileName).getName());
+                                zos.putNextEntry(zipEntry);
+                                int len;
+                                while ((len = fis.read(buffer)) > 0) {
+                                    zos.write(buffer, 0, len);
                                 }
+                                zos.closeEntry();
+                                fileAddedToZip = true;
                             }
-                            fileAddedToZip = true;
-                            // Close the current entry
-                            zos.closeEntry();
-
-                        } else {
-                            LogUtil.info(getClassName(), "File not found: " + fileName);
                         }
                     }
-                    
-                    if(fileAddedToZip){
-                        LogUtil.info(getClassName(), "Files have been zipped successfully!");
+                }
 
-                        // Set the response headers
-                        response.setContentType("application/zip");
-                        response.setHeader("Content-Disposition", "attachment; filename=files.zip");
-            
-                        // Write the zip data to the response output stream
-                        try (ServletOutputStream servletOutputStream = response.getOutputStream()) {
-                            byteArrayOutputStream.writeTo(servletOutputStream);
-                            servletOutputStream.flush();
-                        }
+                byte[] zipData = byteArrayOutputStream.toByteArray();
+
+                if (fileAddedToZip && zipData.length > 0) {
+                    response.setContentType("application/zip");
+                    response.setHeader("Content-Disposition", "attachment; filename=files.zip");
+                    response.setContentLength(zipData.length);
+
+                    try (ServletOutputStream servletOutputStream = response.getOutputStream()) {
+                        servletOutputStream.write(zipData);
+                        servletOutputStream.flush();
                     }
-                
-                } catch (IOException e) {
-                    LogUtil.error("Zip File", e, e.getMessage());
+                } else {
+                    response.setContentType("text/plain");
+                    response.getWriter().write("No files found to download.");
                 }
             }
         }
     }
+
 
     private String findUploadFieldIds(String formDefId, String json){
         Gson gson = new Gson();
