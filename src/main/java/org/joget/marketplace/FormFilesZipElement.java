@@ -1,35 +1,20 @@
 package org.joget.marketplace;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-
-import org.joget.apps.form.lib.SelectBox;
-import org.joget.apps.form.model.Form;
-import org.joget.apps.form.model.FormBuilderPalette;
-import org.joget.plugin.base.PluginWebSupport;
-import org.joget.workflow.model.WorkflowAssignment;
-import org.joget.workflow.util.WorkflowUtil;
-import org.springframework.context.ApplicationContext;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
@@ -37,6 +22,8 @@ import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppPluginUtil;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.lib.SelectBox;
+import org.joget.apps.form.model.FormBuilderPalette;
 import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
@@ -45,6 +32,14 @@ import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.ResourceBundleUtil;
 import org.joget.commons.util.SecurityUtil;
+import org.joget.plugin.base.PluginWebSupport;
+import org.joget.workflow.util.WorkflowUtil;
+import org.springframework.context.ApplicationContext;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
     public static String MESSAGE_PATH = "message/FormFilesZipElement";
@@ -152,12 +147,76 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
 
     @Override
     public void webService(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if ("GET".equalsIgnoreCase(request.getMethod()) && "list".equals(request.getParameter("action"))) {
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+            String formDefId = request.getParameter("_formDefId");
+            String download = request.getParameter("_download");
+            String downloadFields = request.getParameter("_downloadFields");
+            String id = request.getParameter("id");
+
+            ApplicationContext ac = AppUtil.getApplicationContext();
+            AppService appService = (AppService) ac.getBean("appService");
+            FormDefinitionDao dao = (FormDefinitionDao) FormUtil.getApplicationContext().getBean("formDefinitionDao");
+            FormDefinition formDef = dao.loadById(formDefId, appDef);
+
+            String[] uploadFieldIdsArr;
+            if ("downloadAll".equals(download)) {
+                String json = formDef.getJson();
+                String uploadFieldIds = findUploadFieldIds(formDefId, json);
+                uploadFieldIdsArr = uploadFieldIds.split(",");
+            } else {
+                uploadFieldIdsArr = downloadFields.split(",");
+            }
+
+            FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId, id);
+            JsonArray filesJson = new JsonArray();
+
+            if (!set.isEmpty()) {
+                FormRow row = set.get(0);
+                for (String uploadFieldId : uploadFieldIdsArr) {
+                    String fileValue = row.getProperty(uploadFieldId);
+                    if (fileValue != null && !fileValue.isEmpty()) {
+                        String[] files = fileValue.split(";");
+                        for (String file : files) {
+                            JsonObject fileObj = new JsonObject();
+                            fileObj.addProperty("fileName", file);
+                            fileObj.addProperty("fieldId", uploadFieldId);
+                            
+                            // Get file size
+                            try {
+                                File actualFile = FileUtil.getFile(file.trim(), appService.getFormTableName(appDef, formDefId), id);
+                                if (actualFile != null && actualFile.exists()) {
+                                    long fileSize = actualFile.length();
+                                    String sizeStr = formatFileSize(fileSize);
+                                    fileObj.addProperty("fileSize", sizeStr);
+                                    fileObj.addProperty("fileSizeBytes", fileSize);
+                                } else {
+                                    fileObj.addProperty("fileSize", "Unknown");
+                                    fileObj.addProperty("fileSizeBytes", 0);
+                                }
+                            } catch (Exception e) {
+                                fileObj.addProperty("fileSize", "Unknown");
+                                fileObj.addProperty("fileSizeBytes", 0);
+                            }
+                            
+                            filesJson.add(fileObj);
+                        }
+                    }
+                }
+            }
+
+            response.getWriter().write(filesJson.toString());
+            return;
+        }
         if ("POST".equalsIgnoreCase(request.getMethod())) {
             AppDefinition appDef = AppUtil.getCurrentAppDefinition();
             String nonce = request.getParameter("_nonce");
             String formDefId = request.getParameter("_formDefId");
-            String download = request.getParameter("_download");;
-            String downloadFields = request.getParameter("_downloadFields");;
+            String download = request.getParameter("_download");
+            String downloadFields = request.getParameter("_downloadFields");
             String id = request.getParameter("id");
 
             if (SecurityUtil.verifyNonce(nonce, new String[]{"FormFilesZipElement", appDef.getAppId(), appDef.getVersion().toString()})) {
@@ -166,35 +225,47 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                 FormDefinitionDao dao = (FormDefinitionDao) FormUtil.getApplicationContext().getBean("formDefinitionDao");
                 FormDefinition formDef = dao.loadById(formDefId, appDef);
                 
-                String[] uploadFieldIdsArr = new String[0];
-                if(download.equals("downloadAll")){
-                    // get all upload field ids
-                    String json = formDef.getJson();
-                    String uploadFieldIds = findUploadFieldIds(formDefId, json);
-                    uploadFieldIdsArr = uploadFieldIds.split(",");
-                } else if(download.equals("downloadSelectedFields")){
-                    String uploadFieldIds = downloadFields;
-                    uploadFieldIdsArr = uploadFieldIds.split(",");
-                }
-            
-                // get files from upload field ids
-                FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId,id);
-                FormRow row = set.get(0);
-
-                // Get excel file
+                // Get selected files from the request
+                String[] selectedFiles = request.getParameterValues("selectedFiles");
                 List<String> fileNamesList = new ArrayList<>();
-                for(String uploadFieldId : uploadFieldIdsArr){
-                    if (uploadFieldId != null && !uploadFieldId.equals("")) {
-                        if (!row.get(uploadFieldId).toString().isEmpty()) {
-                            // Get files name
-                            String filesName = row.get(uploadFieldId).toString();
-                            String[] fileNames = filesName.split(";");
-                            for (String s : fileNames) {
-                                fileNamesList.add(s);
+                
+                if (selectedFiles != null && selectedFiles.length > 0) {
+                    // Use selected files from frontend
+                    for (String fileName : selectedFiles) {
+                        if (fileName != null && !fileName.trim().isEmpty()) {
+                            fileNamesList.add(fileName.trim());
+                        }
+                    }
+                } else {
+                    // Fallback to original logic for backward compatibility
+                    String[] uploadFieldIdsArr = new String[0];
+                    if(download.equals("downloadAll")){
+                        // get all upload field ids
+                        String json = formDef.getJson();
+                        String uploadFieldIds = findUploadFieldIds(formDefId, json);
+                        uploadFieldIdsArr = uploadFieldIds.split(",");
+                    } else if(download.equals("downloadSelectedFields")){
+                        String uploadFieldIds = downloadFields;
+                        uploadFieldIdsArr = uploadFieldIds.split(",");
+                    }
+                
+                    // get files from upload field ids
+                    FormRowSet set = appService.loadFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId,id);
+                    FormRow row = set.get(0);
+
+                    for(String uploadFieldId : uploadFieldIdsArr){
+                        if (uploadFieldId != null && !uploadFieldId.equals("")) {
+                            if (!row.get(uploadFieldId).toString().isEmpty()) {
+                                // Get files name
+                                String filesName = row.get(uploadFieldId).toString();
+                                String[] fileNames = filesName.split(";");
+                                for (String s : fileNames) {
+                                    fileNamesList.add(s);
+                                }
+                                
+                            } else {
+                                LogUtil.info(getClassName(), "Form Row not found for ID: " + id);
                             }
-                            
-                        } else {
-                            LogUtil.info(getClassName(), "Form Row not found for ID: " + id);
                         }
                     }
                 }
@@ -281,5 +352,12 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
             }
         }
         return id;
+    }
+    
+    private String formatFileSize(long size) {
+        if (size <= 0) return "0 B";
+        final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
 }
