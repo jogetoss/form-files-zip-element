@@ -45,37 +45,6 @@
             "type":"selectbox",
             "options_ajax":"[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options",
             "required":"True"
-         },
-        {
-            "name":"downloadConfig",
-            "label":"@@form.formfileszipelement.downloadConfig@@",
-            "type":"selectbox",
-            "required" : "True",
-            "options":[
-              {
-                 "value":"downloadAll",
-                 "label":"@@form.formfileszipelement.downloadAll@@"
-              },
-              {
-                "value":"downloadSelectedFields",
-                "label":"@@form.formfileszipelement.downloadSelectedFields@@"
-             }
-           ]
-        },
-        {
-            "name":"downloadFields",
-            "label":"@@form.formfileszipelement.downloadFields@@",
-            "type":"grid",
-            "control_field": "downloadConfig",
-            "control_value": "downloadSelectedFields",
-            "columns":[
-               {
-                  "key":"field",
-                  "label":"@@form.formfileszipelement.fieldId@@",
-                  "options_ajax_on_change":"formDefId",
-                  "options_ajax":"[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"
-               }
-            ]
          }
       ]
    }
