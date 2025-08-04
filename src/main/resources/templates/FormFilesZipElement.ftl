@@ -135,13 +135,16 @@ $(document).ready(function() {
                 const row = $('<tr>');
                 row.append('<td class="name-cell">' +
                     '<label class="file-row">' +
-                        '<input type="checkbox" class="file-checkbox" value="' + file.fileName + '">' +
+                        '<input type="checkbox" class="file-checkbox" value="' + file.fileName + '" checked>' +
                         '<span class="file-name">' + file.fileName + '</span>' +
                     '</label>' +
                 '</td>' +
                 '<td>' + (file.fileSize || 'Unknown') + '</td>');
                 tbody.append(row);
             });
+            
+            // Check the "Select All" checkbox by default
+            $("#selectAll").prop("checked", true);
             
             // Re-bind the checkbox change event for new elements
             $(".file-checkbox").off('change').on('change', function() {
