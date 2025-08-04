@@ -106,20 +106,14 @@ $(document).ready(function() {
         const separator = serviceUrl.includes('?') ? '&' : '?';
         const listUrl = serviceUrl + separator + "action=list&id=${id!}";
         
-        console.log('Loading files from URL:', listUrl);
-        
         $.ajax({
             url: listUrl,
             method: 'GET',
             dataType: 'json',
             success: function(data) {
-                console.log('Files loaded successfully:', data);
                 populateFilesTable(data);
             },
             error: function(xhr, status, error) {
-                console.error('Error loading files:', error);
-                console.error('Status:', status);
-                console.error('Response:', xhr.responseText);
                 $("#filesTableBody").html('<tr><td colspan="2" style="text-align: center; color: red; padding: 20px;">Error loading files. Please try again.</td></tr>');
             }
         });
@@ -158,10 +152,6 @@ $(document).ready(function() {
 
         // Function to download selected files
     function downloadSelectedFiles(selectedFiles) {
-        console.log('Starting download for files:', selectedFiles);
-        const serviceUrl = "${element.getServiceUrl()}";
-        console.log('Service URL:', serviceUrl);
-
         // Prevent any default behavior
         if (event) {
             event.preventDefault();
@@ -171,7 +161,7 @@ $(document).ready(function() {
         // Create a hidden form
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = serviceUrl;
+        form.action = "${element.getServiceUrl()}";
         form.style.display = 'none';
 
         // Add the selected files as hidden inputs
@@ -181,7 +171,6 @@ $(document).ready(function() {
             input.name = 'selectedFiles';
             input.value = fileName;
             form.appendChild(input);
-            console.log('Added file input:', fileName);
         });
 
         // Add the record ID
@@ -190,7 +179,6 @@ $(document).ready(function() {
         idInput.name = 'id';
         idInput.value = '${id!}';
         form.appendChild(idInput);
-        console.log('Added record ID:', '${id!}');
 
         // Create a hidden iframe with a unique name
         const iframeName = 'download-frame-' + Date.now();
@@ -210,26 +198,26 @@ $(document).ready(function() {
         // Append both form and iframe to body
         document.body.appendChild(iframe);
         document.body.appendChild(form);
-        console.log('Form and iframe appended to body');
         
         // Submit the form
-        console.log('Submitting form...');
         form.submit();
-        console.log('Form submitted successfully');
+        
+        // Close popup after a short delay
+        setTimeout(function() {
+            $("#popupModal").removeClass("show");
+        }, 1000);
         
         // Clean up after a delay
         setTimeout(function() {
             try {
                 if (document.body.contains(form)) {
                     document.body.removeChild(form);
-                    console.log('Form removed');
                 }
                 if (document.body.contains(iframe)) {
                     document.body.removeChild(iframe);
-                    console.log('Iframe removed');
                 }
             } catch (e) {
-                console.log('Cleanup completed');
+                // Silent cleanup
             }
         }, 3000);
     }
