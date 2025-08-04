@@ -52,7 +52,7 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
 
     @Override
     public String getVersion() {
-        return "8.0.1";
+        return "8.0.2";
     }
 
     @Override
