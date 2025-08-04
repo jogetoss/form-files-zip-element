@@ -152,73 +152,52 @@ $(document).ready(function() {
 
         // Function to download selected files
     function downloadSelectedFiles(selectedFiles) {
-        // Prevent any default behavior
         if (event) {
             event.preventDefault();
             event.stopPropagation();
         }
 
-        // Create a hidden form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = "${element.getServiceUrl()}";
-        form.style.display = 'none';
+        const form = Object.assign(document.createElement('form'), {
+            method: 'POST',
+            action: "${element.getServiceUrl()}",
+            style: 'display: none'
+        });
 
-        // Add the selected files as hidden inputs
-        selectedFiles.forEach(function(fileName) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'selectedFiles';
-            input.value = fileName;
+        selectedFiles.forEach(fileName => {
+            const input = Object.assign(document.createElement('input'), {
+                type: 'hidden',
+                name: 'selectedFiles',
+                value: fileName
+            });
             form.appendChild(input);
         });
 
-        // Add the record ID
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'id';
-        idInput.value = '${id!}';
+        const idInput = Object.assign(document.createElement('input'), {
+            type: 'hidden',
+            name: 'id',
+            value: '${id!}'
+        });
         form.appendChild(idInput);
 
-        // Create a hidden iframe with a unique name
-        const iframeName = 'download-frame-' + Date.now();
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.position = 'absolute';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '-9999px';
-        
-        // Set the form target to the iframe
+        const iframeName = "download-frame-" + new Date().getTime();
+        const iframe = Object.assign(document.createElement('iframe'), {
+            name: iframeName,
+            style: 'display: none; width: 0; height: 0; border: none; position: absolute; left: -9999px; top: -9999px;'
+        });
+
         form.target = iframeName;
 
-        // Append both form and iframe to body
-        document.body.appendChild(iframe);
-        document.body.appendChild(form);
-        
-        // Submit the form
+        document.body.append(iframe, form);
+
         form.submit();
-        
-        // Close popup after a short delay
-        setTimeout(function() {
-            $("#popupModal").removeClass("show");
-        }, 1000);
-        
-        // Clean up after a delay
-        setTimeout(function() {
+
+        setTimeout(() => $("#popupModal").removeClass("show"), 1000);
+
+        setTimeout(() => {
             try {
-                if (document.body.contains(form)) {
-                    document.body.removeChild(form);
-                }
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
-                }
-            } catch (e) {
-                // Silent cleanup
-            }
+                document.body.contains(form) && document.body.removeChild(form);
+                document.body.contains(iframe) && document.body.removeChild(iframe);
+            } catch (e) {}
         }, 3000);
     }
 });
