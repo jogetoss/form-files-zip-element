@@ -11,7 +11,7 @@
 <div class="form-cell-value" id="formfilezzip_${elementParamName!}_${element.properties.elementUniqueKey!}">
     <button id="${elementParamName!}" name="${elementParamName!}" class="download-zip-button">
         <i class="fas fa-download" aria-hidden="true"></i>
-        <span>Download Zip</span>
+        <span>${element.properties.buttonLabel!}</span>
     </button>
 </div>
 
