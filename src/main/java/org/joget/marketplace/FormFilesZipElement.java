@@ -29,7 +29,6 @@ import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormUtil;
-import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.ResourceBundleUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.plugin.base.PluginWebSupport;
@@ -285,6 +284,9 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                 if (fileAddedToZip && zipData.length > 0) {
                     response.setContentType("application/zip");
                     response.setHeader("Content-Disposition", "attachment; filename=files.zip");
+                    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+                    response.setHeader("Pragma", "no-cache");
+                    response.setHeader("Expires", "0");
                     response.setContentLength(zipData.length);
 
                     try (ServletOutputStream servletOutputStream = response.getOutputStream()) {
@@ -293,6 +295,9 @@ public class FormFilesZipElement extends SelectBox implements PluginWebSupport {
                     }
                 } else {
                     response.setContentType("text/plain");
+                    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+                    response.setHeader("Pragma", "no-cache");
+                    response.setHeader("Expires", "0");
                     response.getWriter().write("No files found to download.");
                 }
             }

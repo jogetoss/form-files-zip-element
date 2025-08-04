@@ -156,37 +156,82 @@ $(document).ready(function() {
         }
     }
 
-    // Function to download selected files
+        // Function to download selected files
     function downloadSelectedFiles(selectedFiles) {
+        console.log('Starting download for files:', selectedFiles);
         const serviceUrl = "${element.getServiceUrl()}";
+        console.log('Service URL:', serviceUrl);
 
-        // Create a form to submit the download request
-        const form = $('<form>', {
-            'method': 'POST',
-            'action': serviceUrl,
-            'target': '_blank'
-        });
+        // Prevent any default behavior
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        // Create a hidden form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = serviceUrl;
+        form.style.display = 'none';
 
         // Add the selected files as hidden inputs
         selectedFiles.forEach(function(fileName) {
-            form.append($('<input>', {
-                'type': 'hidden',
-                'name': 'selectedFiles',
-                'value': fileName
-            }));
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selectedFiles';
+            input.value = fileName;
+            form.appendChild(input);
+            console.log('Added file input:', fileName);
         });
 
         // Add the record ID
-        form.append($('<input>', {
-            'type': 'hidden',
-            'name': 'id',
-            'value': '${id!}'
-        }));
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = '${id!}';
+        form.appendChild(idInput);
+        console.log('Added record ID:', '${id!}');
 
+        // Create a hidden iframe with a unique name
+        const iframeName = 'download-frame-' + Date.now();
+        const iframe = document.createElement('iframe');
+        iframe.name = iframeName;
+        iframe.style.display = 'none';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.position = 'absolute';
+        iframe.style.left = '-9999px';
+        iframe.style.top = '-9999px';
+        
+        // Set the form target to the iframe
+        form.target = iframeName;
+
+        // Append both form and iframe to body
+        document.body.appendChild(iframe);
+        document.body.appendChild(form);
+        console.log('Form and iframe appended to body');
+        
         // Submit the form
-        $('body').append(form);
+        console.log('Submitting form...');
         form.submit();
-        form.remove();
+        console.log('Form submitted successfully');
+        
+        // Clean up after a delay
+        setTimeout(function() {
+            try {
+                if (document.body.contains(form)) {
+                    document.body.removeChild(form);
+                    console.log('Form removed');
+                }
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                    console.log('Iframe removed');
+                }
+            } catch (e) {
+                console.log('Cleanup completed');
+            }
+        }, 3000);
     }
 });
 </script>
