@@ -58,31 +58,28 @@ $(document).ready(function() {
     // Open popup
     $("#${elementParamName!}").click(function(event) {
         event.preventDefault();
-        $("#popupModal").addClass("show");
+        $("#popupModal").css('display', 'flex');
+        setTimeout(() => $("#popupModal").addClass("show"), 10);
         loadFiles();
     });
 
     // Close popup
     $("#closePopup").click(function() {
         $("#popupModal").removeClass("show");
+        setTimeout(() => $("#popupModal").css('display', 'none'), 300);
     });
 
     // Close when clicking outside content
     $("#popupModal").click(function(e) {
         if ($(e.target).is("#popupModal")) {
             $("#popupModal").removeClass("show");
+            setTimeout(() => $("#popupModal").css('display', 'none'), 300);
         }
     });
 
     // Select all toggle
     $("#selectAll").change(function() {
         $(".file-checkbox").prop("checked", this.checked);
-    });
-
-    // Sync "Select All" checkbox with individual selections
-    $(".file-checkbox").change(function() {
-        const allChecked = $(".file-checkbox").length === $(".file-checkbox:checked").length;
-        $("#selectAll").prop("checked", allChecked);
     });
 
     // Download button logic
@@ -94,18 +91,16 @@ $(document).ready(function() {
         if (selected.length === 0) {
             alert("Please select at least one file to download.");
         } else {
-            // Trigger the actual download
             downloadSelectedFiles(selected);
         }
     });
 
-        // Function to load files from the endpoint
+    // Function to load files from the endpoint
     function loadFiles() {
         const serviceUrl = "${element.getServiceUrl()}";
-        // Check if the serviceUrl already has parameters
         const separator = serviceUrl.includes('?') ? '&' : '?';
         const listUrl = serviceUrl + separator + "action=list&id=${id!}";
-        
+
         $.ajax({
             url: listUrl,
             method: 'GET',
@@ -119,11 +114,11 @@ $(document).ready(function() {
         });
     }
 
-        // Function to populate the files table
+    // Function to populate the files table
     function populateFilesTable(files) {
         const tbody = $("#filesTableBody");
         tbody.empty();
-        
+
         if (files && files.length > 0) {
             files.forEach(function(file) {
                 const row = $('<tr>');
@@ -136,11 +131,8 @@ $(document).ready(function() {
                 '<td>' + (file.fileSize || 'Unknown') + '</td>');
                 tbody.append(row);
             });
-            
-            // Check the "Select All" checkbox by default
+
             $("#selectAll").prop("checked", true);
-            
-            // Re-bind the checkbox change event for new elements
             $(".file-checkbox").off('change').on('change', function() {
                 const allChecked = $(".file-checkbox").length === $(".file-checkbox:checked").length;
                 $("#selectAll").prop("checked", allChecked);
@@ -150,7 +142,7 @@ $(document).ready(function() {
         }
     }
 
-        // Function to download selected files
+    // Function to download selected files
     function downloadSelectedFiles(selectedFiles) {
         if (event) {
             event.preventDefault();
@@ -186,12 +178,13 @@ $(document).ready(function() {
         });
 
         form.target = iframeName;
-
         document.body.append(iframe, form);
-
         form.submit();
 
-        setTimeout(() => $("#popupModal").removeClass("show"), 1000);
+        setTimeout(() => {
+            $("#popupModal").removeClass("show");
+            setTimeout(() => $("#popupModal").css('display', 'none'), 300);
+        }, 1000);
 
         setTimeout(() => {
             try {
@@ -214,20 +207,16 @@ $(document).ready(function() {
     backdrop-filter: blur(5px);
     background-color: rgba(0, 0, 0, 0.6);
     opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
-/* Show modal */
 .popup-modal.show {
+    display: flex;
     opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
 }
 
 /* Modal Content Box */
